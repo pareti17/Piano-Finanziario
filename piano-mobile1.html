@@ -1,0 +1,793 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>Piano Finanziario</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0a0a0f;--s1:#111118;--s2:#18181f;
+  --border:rgba(255,255,255,0.08);--border2:rgba(255,255,255,0.16);
+  --t1:#f0f0f5;--t2:#8888a0;--t3:#44445a;--r:14px;
+  --fondo:#f59e0b;--macchina:#3b82f6;--pac:#10b981;
+  --vacanza:#f43f5e;--risp:#a78bfa;
+}
+html{font-size:16px;-webkit-text-size-adjust:100%}
+body{font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif;background:var(--bg);color:var(--t1);min-height:100vh;padding-bottom:calc(80px + env(safe-area-inset-bottom))}
+
+.topbar{position:sticky;top:0;z-index:50;background:rgba(10,10,15,0.94);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border-bottom:1px solid var(--border);padding:14px 20px 0}
+.topbar-title{font-size:17px;font-weight:700;letter-spacing:-.02em;margin-bottom:12px}
+.tabs{display:flex;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+.tabs::-webkit-scrollbar{display:none}
+.tab{flex-shrink:0;padding:8px 16px;font-size:13px;font-weight:500;color:var(--t3);border-bottom:2px solid transparent;cursor:pointer;transition:all .15s;white-space:nowrap}
+.tab.active{color:var(--t1);border-bottom-color:var(--t1)}
+.tab.f1.active{color:var(--fondo);border-bottom-color:var(--fondo)}
+.tab.f2.active{color:var(--macchina);border-bottom-color:var(--macchina)}
+.tab.f3.active{color:var(--pac);border-bottom-color:var(--pac)}
+
+.bottom-nav{position:fixed;bottom:0;left:0;right:0;z-index:50;background:rgba(10,10,15,0.97);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border-top:1px solid var(--border);display:grid;grid-template-columns:repeat(4,1fr);padding:8px 0 calc(8px + env(safe-area-inset-bottom))}
+.bnav-item{display:flex;flex-direction:column;align-items:center;gap:3px;padding:6px 4px;font-size:10px;color:var(--t3);cursor:pointer;transition:color .15s}
+.bnav-item.active{color:var(--t1)}
+.bnav-icon{font-size:20px;line-height:1}
+
+.page{display:none}.page.active{display:block}
+.wrap{padding:20px 16px 24px;max-width:520px;margin:0 auto}
+
+.phase-hero{border-radius:var(--r);padding:20px;margin-bottom:18px}
+.ph-eyebrow{font-size:10px;text-transform:uppercase;letter-spacing:.12em;opacity:.6;margin-bottom:6px}
+.ph-title{font-size:22px;font-weight:800;letter-spacing:-.03em;line-height:1.1}
+.ph-sub{font-size:12px;opacity:.65;margin-top:6px;line-height:1.5}
+.ph-range{display:inline-block;margin-top:12px;font-size:11px;font-weight:600;padding:4px 10px;border-radius:20px;background:rgba(255,255,255,0.1)}
+
+.kpi-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px}
+.kpi-card{background:var(--s1);border:1px solid var(--border);border-radius:var(--r);padding:14px}
+.kpi-lbl{font-size:10px;color:var(--t3);display:flex;align-items:center;gap:5px;margin-bottom:6px;text-transform:uppercase;letter-spacing:.06em}
+.kpi-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0}
+.kpi-val{font-size:20px;font-weight:700;letter-spacing:-.025em;font-variant-numeric:tabular-nums}
+.kpi-sub{font-size:10px;color:var(--t3);margin-top:3px}
+
+.card{background:var(--s1);border:1px solid var(--border);border-radius:var(--r);margin-bottom:14px;overflow:hidden}
+.card-header{padding:16px 16px 10px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px}
+.card-title{font-size:14px;font-weight:600}
+.card-sub{font-size:11px;color:var(--t2)}
+
+.legend{display:flex;gap:10px;flex-wrap:wrap;padding:0 16px 10px}
+.leg{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--t2)}
+.leg-sq{width:8px;height:8px;border-radius:2px;flex-shrink:0}
+
+.chart-wrap{padding:0 12px 14px;position:relative}
+.ch160{height:160px}.ch180{height:180px}.ch200{height:200px}
+
+/* VOCI MODIFICABILI */
+.voci{padding:0 16px 14px;display:flex;flex-direction:column;gap:0}
+.sezione-label{font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--t3);font-weight:600;padding:12px 0 6px;border-top:1px solid var(--border);margin-top:4px}
+.sezione-label:first-child{border-top:none;margin-top:0;padding-top:0}
+.voce-row{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.03)}
+.voce-row:last-of-type{border-bottom:none}
+.voce-name{font-size:13px;color:var(--t2);display:flex;align-items:center;gap:7px}
+.voce-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+.voce-input-wrap{display:flex;align-items:center;gap:3px;background:rgba(255,255,255,0.05);border:1px solid var(--border2);border-radius:8px;padding:4px 9px}
+.voce-euro{font-size:12px;color:var(--t3)}
+.voce-input{background:none;border:none;outline:none;color:var(--t1);font-size:13px;font-weight:600;width:62px;text-align:right;font-variant-numeric:tabular-nums;-moz-appearance:textfield}
+.voce-input::-webkit-outer-spin-button,.voce-input::-webkit-inner-spin-button{-webkit-appearance:none}
+
+/* RECAP RISPARMIO */
+.recap-card{background:rgba(16,185,129,0.07);border:1px solid rgba(16,185,129,0.2);border-radius:var(--r);padding:16px;margin-bottom:14px}
+.recap-title{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--pac);margin-bottom:12px}
+.recap-rows{display:flex;flex-direction:column;gap:8px}
+.recap-row{display:flex;justify-content:space-between;font-size:13px}
+.recap-row span:first-child{color:var(--t2)}
+.recap-row span:last-child{font-weight:600;font-variant-numeric:tabular-nums}
+.recap-div{border:none;border-top:1px solid rgba(16,185,129,0.2);margin:10px 0}
+.recap-total{display:flex;justify-content:space-between;font-size:15px;font-weight:700}
+
+/* MARGINE BOX */
+.margine-box{background:rgba(255,255,255,0.04);border-radius:10px;padding:12px 14px;margin:0 16px 14px}
+.mb-row{display:flex;justify-content:space-between;font-size:12px;color:var(--t2);padding:2px 0}
+.mb-row strong{color:var(--t1)}
+.mb-divider{border:none;border-top:1px solid var(--border);margin:7px 0}
+.mb-avanzo{font-size:13px;font-weight:600}
+.ok{color:#10b981}.warn{color:#f59e0b}.bad{color:#f43f5e}
+
+/* TABLE */
+.tl-scroll{overflow-x:auto;padding:0 16px 14px}
+.tl-table{width:100%;border-collapse:collapse;font-size:11px}
+.tl-table th{font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--t3);font-weight:600;padding:6px 5px;border-bottom:1px solid var(--border);text-align:left;white-space:nowrap}
+.tl-table td{padding:7px 5px;border-bottom:1px solid rgba(255,255,255,0.03);color:var(--t2);font-variant-numeric:tabular-nums;white-space:nowrap}
+.tl-table td:first-child{color:var(--t3)}
+.tl-table td.hl{color:var(--t1);font-weight:600}
+.tl-table tr.ms td{background:rgba(255,255,255,0.03)}
+
+/* SNAP */
+.snap-card{background:var(--s1);border:1px solid var(--border);border-radius:var(--r);padding:16px;margin-bottom:10px;position:relative;overflow:hidden}
+.snap-accent{position:absolute;top:0;left:0;right:0;height:3px}
+.snap-sc{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;margin-bottom:12px}
+.snap-rows{display:flex;flex-direction:column;gap:8px}
+.snap-row2{display:flex;justify-content:space-between;font-size:13px}
+.snap-row2 span:first-child{color:var(--t2)}
+.snap-row2 span:last-child{font-weight:600;font-variant-numeric:tabular-nums}
+.snap-div{border:none;border-top:1px solid var(--border);margin:10px 0}
+.snap-total{display:flex;justify-content:space-between;font-size:15px;font-weight:700}
+.sec-label{font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--t3);font-weight:600;margin:20px 0 10px;display:flex;align-items:center;gap:10px}
+.sec-label::after{content:'';flex:1;height:1px;background:var(--border)}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar-title">Piano Finanziario</div>
+  <div class="tabs">
+    <div class="tab f1 active" onclick="showPage('f1')">🏦 Fase 1</div>
+    <div class="tab f2" onclick="showPage('f2')">🚗 Fase 2</div>
+    <div class="tab f3" onclick="showPage('f3')">📈 Fase 3</div>
+    <div class="tab" onclick="showPage('cf')">⇌ Confronto</div>
+  </div>
+</div>
+
+<!-- ══════════════ FASE 1 ══════════════ -->
+<div class="page active" id="page-f1">
+<div class="wrap">
+
+  <div class="phase-hero" style="background:linear-gradient(135deg,rgba(245,158,11,0.15),rgba(245,158,11,0.03));border:1px solid rgba(245,158,11,0.18)">
+    <div class="ph-eyebrow">Fase 1</div>
+    <div class="ph-title" style="color:var(--fondo)">Costruisci il fondo</div>
+    <div class="ph-sub">Tutto il margine mensile va sul fondo emergenze. Nessun altro obiettivo.</div>
+    <div class="ph-range">Set – Dic 2026 · 4 mesi</div>
+  </div>
+
+  <div class="kpi-row">
+    <div class="kpi-card">
+      <div class="kpi-lbl"><div class="kpi-dot" style="background:var(--fondo)"></div>Fondo a Dic</div>
+      <div class="kpi-val" id="f1-kpi-fondo" style="color:var(--fondo)">—</div>
+      <div class="kpi-sub" id="f1-kpi-sub">Target €3.000</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-lbl"><div class="kpi-dot" style="background:#22c55e"></div>Stipendio</div>
+      <div class="kpi-val" id="f1-kpi-stip">€1.500</div>
+      <div class="kpi-sub">netto / mese</div>
+    </div>
+  </div>
+
+  <!-- VOCI MODIFICABILI -->
+  <div class="card">
+    <div class="card-header"><span class="card-title">Voci modificabili</span></div>
+    <div class="voci">
+      <div class="sezione-label">Entrate</div>
+      <div class="voce-row">
+        <span class="voce-name"><span class="voce-dot" style="background:#22c55e"></span>Stipendio netto</span>
+        <div class="voce-input-wrap"><span class="voce-euro">€</span><input class="voce-input" type="number" id="f1-stip" value="1500" min="0" max="5000" step="50"></div>
+      </div>
+
+      <div class="sezione-label">Spese fisse</div>
+      <div class="voce-row">
+        <span class="voce-name"><span class="voce-dot" style="background:#64748b"></span>Motorino (rata)</span>
+        <div class="voce-input-wrap"><span class="voce-euro">€</span><input class="voce-input" type="number" id="f1-moto" value="177" min="0" max="500" step="5"></div>
+      </div>
+      <div class="voce-row">
+        <span class="voce-name"><span class="voce-dot" style="background:#64748b"></span>Uscite amici</span>
+        <div class="voce-input-wrap"><span class="voce-euro">€</span><input class="voce-input" type="number" id="f1-uscite" value="400" min="0" max="800" step="10"></div>
+      </div>
+      <div class="voce-row">
+        <span class="voce-name"><span class="voce-dot" style="background:#64748b"></span>Pranzi / caffè</span>
+        <div class="voce-input-wrap"><span class="voce-euro">€</span><input class="voce-input" type="number" id="f1-pranzi" value="65" min="0" max="300" step="5"></div>
+      </div>
+      <div class="voce-row">
+        <span class="voce-name"><span class="voce-dot" style="background:#64748b"></span>Abbonamenti</span>
+        <div class="voce-input-wrap"><span class="voce-euro">€</span><input class="voce-input" type="number" id="f1-abb" value="7" min="0" max="100" step="1"></div>
+      </div>
+
+      <div class="sezione-label">Spese temporanee</div>
+      <div class="voce-row">
+        <span class="voce-name"><span class="voce-dot" style="background:var(--vacanza)"></span>Palestra (solo Set)</span>
+        <div class="voce-input-wrap"><span class="voce-euro">€</span><input class="voce-input" type="number" id="f1-pal" value="120" min="0" max="200" step="5"></div>
+      </div>
+      <div class="voce-row">
+        <span class="voce-name"><span class="voce-dot" style="background:var(--vacanza)"></span>Genitori (Set–Nov)</span>
+        <div class="voce-input-wrap"><span class="voce-euro">€</span><input class="voce-input" type="number" id="f1-gen" value="100" min="0" max="300" step="10"></div>
+      </div>
+    </div>
+
+    <div class="margine-box">
+      <div class="mb-row"><span>Spese base mensili</span><strong id="f1-mb-base">—</strong></div>
+      <div class="mb-row" style="font-size:11px;color:var(--t3)">Set: −palestra −genitori &nbsp;|&nbsp; Ott–Nov: −genitori</div>
+      <hr class="mb-divider">
+      <div id="f1-mb-margini" style="display:flex;flex-direction:column;gap:3px;margin-bottom:8px"></div>
+      <hr class="mb-divider">
+      <div class="mb-row"><span class="mb-avanzo">Fondo totale a Dic</span><span class="mb-avanzo" id="f1-mb-tot">—</span></div>
+    </div>
+  </div>
+
+  <!-- RECAP RISPARMIO -->
+  <div class="recap-card">
+    <div class="recap-title">📊 Recap risparmio</div>
+    <div class="recap-rows">
+      <div class="recap-row"><span>Versato in 4 mesi</span><span id="f1-rec-versato" style="color:var(--fondo)">—</span></div>
+      <div class="recap-row"><span>Media mensile</span><span id="f1-rec-media">—</span></div>
+      <div class="recap-row"><span>Risparmio su stipendio</span><span id="f1-rec-pct">—</span></div>
+    </div>
+    <hr class="recap-div">
+    <div class="recap-total"><span>Fondo emergenze</span><span id="f1-rec-tot" style="color:var(--fondo)">—</span></div>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><span class="card-title">Accumulo mese per mese</span></div>
+    <div class="legend"><div class="leg"><div class="leg-sq" style="background:var(--fondo)"></div>Fondo emergenze</div></div>
+    <div class="chart-wrap ch200"><canvas id="f1-line"></canvas></div>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><span class="card-title">Ripartizione stipendio</span><span class="card-sub">media mensile</span></div>
+    <div class="chart-wrap ch180"><canvas id="f1-pie"></canvas></div>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><span class="card-title">Step by step</span></div>
+    <div class="tl-scroll"><table class="tl-table">
+      <thead><tr><th>Mese</th><th>Margine</th><th>→ Fondo</th><th>Tot. fondo</th></tr></thead>
+      <tbody id="f1-tbody"></tbody>
+    </table></div>
+  </div>
+
+</div>
+</div>
+
+<!-- ══════════════ FASE 2 ══════════════ -->
+<div class="page" id="page-f2">
+<div class="wrap">
+
+  <div class="phase-hero" style="background:linear-gradient(135deg,rgba(59,130,246,0.15),rgba(59,130,246,0.03));border:1px solid rgba(59,130,246,0.18)">
+    <div class="ph-eyebrow">Fase 2</div>
+    <div class="ph-title" style="color:var(--macchina)">Accumulo macchina</div>
+    <div class="ph-sub">Fondo emergenze al target. Si accumula per la macchina, PAC avviato, vacanza estiva accantonata.</div>
+    <div class="ph-range">Gen – Lug 2027 · 7 mesi</div>
+  </div>
+
+  <div class="kpi-row">
+    <div class="kpi-card">
+      <div class="kpi-lbl"><div class="kpi-dot" style="background:var(--macchina)"></div>Fondo macchina</div>
+      <div class="kpi-val" id="f2-kpi-auto" style="color:var(--macchina)">—</div>
+      <div class="kpi-sub">a fine luglio</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-lbl"><div class="kpi-dot" style="background:var(--pac)"></div>PAC avviato</div>
+      <div class="kpi-val" id="f2-kpi-pac" style="color:var(--pac)">—</div>
+      <div class="kpi-sub">7 mesi</div>
+    </div>
+  </div>
+  <div class="kpi-row">
+    <div class="kpi-card">
+      <div class="kpi-lbl"><div class="kpi-dot" style="background:var(--vacanza)"></div>Vacanza</div>
+      <div class="kpi-val" id="f2-kpi-vac" style="color:var(--vacanza)">—</div>
+      <div class="kpi-sub">accantonato</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-lbl"><div class="kpi-dot" style="background:#22c55e"></div>Avanzo / mese</div>
+      <div class="kpi-val" id="f2-kpi-av">—</div>
+      <div class="kpi-sub" id="f2-kpi-av-s">sul margine</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><span class="card-title">Voci modificabili</span></div>
+    <div class="voci">
+
+      <div class="sezione-label">Entrate</div>
+      <div class="voce-row">
+        <span class="voce-name"><span class="voce-dot" style="background:#22c55e"></span>Stipendio netto</span>
+        <div class="voce-input-wrap"><span class="voce-euro">€</span><input class="voce-input" type="number" id="f2-stip" value="1500" min="0" max="5000" step="50"></div>
+      </div>
+
+      <div class="sezione-label">Spese mensili</div>
+      <div class="voce-row">
+        <span class="voce-name"><span class="voce-dot" style="background:#64748b"></span>Motorino (rata)</span>
+        <div class="voce-input-wrap"><span class="voce-euro">€</span><input class="voce-input" type="number" id="f2-moto" value="177" min="0" max="500" step="5"></div>
+      </div>
+      <div class="voce-row">
+        <span class="voce-name"><span class="voce-dot" style="background:#64748b"></span>Uscite amici</span>
+        <div class="voce-input-wrap"><span class="voce-euro">€</span><input class="voce-input" type="number" id="f2-uscite" value="400" min="0" max="800" step="10"></div>
+      </div>
+      <div class="voce-row">
+        <span class="voce-name"><span class="voce-dot" style="background:#64748b"></span>Pranzi / caffè</span>
+        <div class="voce-input-wrap"><span class="voce-euro">€</span><input class="voce-input" type="number" id="f2-pranzi" value="65" min="0" max="300" step="5"></div>
+      </div>
+      <div class="voce-row">
+        <span class="voce-name"><span class="voce-dot" style="background:#64748b"></span>Abbonamenti</span>
+        <div class="voce-input-wrap"><span class="voce-euro">€</span><input class="voce-input" type="number" id="f2-abb" value="7" min="0" max="100" step="1"></div>
+      </div>
+
+      <div class="sezione-label">Obiettivi mensili</div>
+      <div class="voce-row">
+        <span class="voce-name"><span class="voce-dot" style="background:var(--macchina)"></span>Fondo macchina</span>
+        <div class="voce-input-wrap"><span class="voce-euro">€</span><input class="voce-input" type="number" id="f2-auto" value="558" min="0" max="858" step="10"></div>
+      </div>
+      <div class="voce-row">
+        <span class="voce-name"><span class="voce-dot" style="background:var(--vacanza)"></span>Vacanza estiva</span>
+        <div class="voce-input-wrap"><span class="voce-euro">€</span><input class="voce-input" type="number" id="f2-vac" value="200" min="0" max="500" step="10"></div>
+      </div>
+      <div class="voce-row">
+        <span class="voce-name"><span class="voce-dot" style="background:var(--pac)"></span>PAC ETF</span>
+        <div class="voce-input-wrap"><span class="voce-euro">€</span><input class="voce-input" type="number" id="f2-pac" value="100" min="0" max="500" step="10"></div>
+      </div>
+    </div>
+
+    <div class="margine-box">
+      <div class="mb-row"><span>Stipendio</span><strong id="f2-mb-stip">—</strong></div>
+      <div class="mb-row"><span>Spese</span><strong id="f2-mb-spese">—</strong></div>
+      <div class="mb-row"><span>Margine</span><strong id="f2-mb-marg">—</strong></div>
+      <hr class="mb-divider">
+      <div class="mb-row"><span>Obiettivi allocati</span><strong id="f2-mb-alloc">—</strong></div>
+      <div class="mb-row"><span class="mb-avanzo">Avanzo mensile</span><span class="mb-avanzo" id="f2-mb-av">—</span></div>
+    </div>
+  </div>
+
+  <!-- RECAP RISPARMIO F2 -->
+  <div class="recap-card">
+    <div class="recap-title">📊 Recap risparmio (7 mesi)</div>
+    <div class="recap-rows">
+      <div class="recap-row"><span>Fondo macchina accumulato</span><span id="f2-rec-auto" style="color:var(--macchina)">—</span></div>
+      <div class="recap-row"><span>PAC investito</span><span id="f2-rec-pac" style="color:var(--pac)">—</span></div>
+      <div class="recap-row"><span>Vacanza accantonata</span><span id="f2-rec-vac" style="color:var(--vacanza)">—</span></div>
+      <div class="recap-row"><span>Avanzo totale (7 mesi)</span><span id="f2-rec-av">—</span></div>
+      <div class="recap-row"><span>% risparmio su stipendio</span><span id="f2-rec-pct">—</span></div>
+    </div>
+    <hr class="recap-div">
+    <div class="recap-total"><span>Totale accantonato</span><span id="f2-rec-tot" style="color:var(--macchina)">—</span></div>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><span class="card-title">Accumulo per obiettivo</span></div>
+    <div class="legend">
+      <div class="leg"><div class="leg-sq" style="background:var(--macchina)"></div>Macchina</div>
+      <div class="leg"><div class="leg-sq" style="background:var(--vacanza)"></div>Vacanza</div>
+      <div class="leg"><div class="leg-sq" style="background:var(--pac)"></div>PAC</div>
+    </div>
+    <div class="chart-wrap ch200"><canvas id="f2-line"></canvas></div>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><span class="card-title">Ripartizione margine</span></div>
+    <div class="chart-wrap ch180"><canvas id="f2-pie"></canvas></div>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><span class="card-title">Step by step</span></div>
+    <div class="tl-scroll"><table class="tl-table">
+      <thead><tr><th>Mese</th><th>Auto</th><th>Vac.</th><th>PAC</th><th>Auto tot.</th><th>PAC tot.</th></tr></thead>
+      <tbody id="f2-tbody"></tbody>
+    </table></div>
+  </div>
+
+</div>
+</div>
+
+<!-- ══════════════ FASE 3 ══════════════ -->
+<div class="page" id="page-f3">
+<div class="wrap">
+
+  <div class="phase-hero" style="background:linear-gradient(135deg,rgba(16,185,129,0.15),rgba(16,185,129,0.03));border:1px solid rgba(16,185,129,0.18)">
+    <div class="ph-eyebrow">Fase 3</div>
+    <div class="ph-title" style="color:var(--pac)">Vita con la macchina</div>
+    <div class="ph-sub">La macchina è tua. PAC continua, il residuo va in risparmio libero.</div>
+    <div class="ph-range">Da ago/set 2027 in poi</div>
+  </div>
+
+  <div class="kpi-row">
+    <div class="kpi-card">
+      <div class="kpi-lbl"><div class="kpi-dot" style="background:var(--vacanza)"></div>Spese totali</div>
+      <div class="kpi-val" id="f3-kpi-spese" style="color:var(--vacanza)">—</div>
+      <div class="kpi-sub">al mese</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-lbl"><div class="kpi-dot" style="background:var(--pac)"></div>Residuo mensile</div>
+      <div class="kpi-val" id="f3-kpi-res" style="color:var(--pac)">—</div>
+      <div class="kpi-sub">da allocare</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><span class="card-title">Voci modificabili</span></div>
+    <div class="voci">
+
+      <div class="sezione-label">Entrate</div>
+      <div class="voce-row">
+        <span class="voce-name"><span class="voce-dot" style="background:#22c55e"></span>Stipendio netto</span>
+        <div class="voce-input-wrap"><span class="voce-euro">€</span><input class="voce-input" type="number" id="f3-stip" value="1500" min="0" max="5000" step="50"></div>
+      </div>
+
+      <div class="sezione-label">Spese auto</div>
+      <div class="voce-row">
+        <span class="voce-name"><span class="voce-dot" style="background:var(--macchina)"></span>Rata finanziamento</span>
+        <div class="voce-input-wrap"><span class="voce-euro">€</span><input class="voce-input" type="number" id="f3-rata" value="260" min="0" max="600" step="5"></div>
+      </div>
+      <div class="voce-row">
+        <span class="voce-name"><span class="voce-dot" style="background:var(--macchina)"></span>Accantonamento maxirata</span>
+        <div class="voce-input-wrap"><span class="voce-euro">€</span><input class="voce-input" type="number" id="f3-maxi" value="140" min="0" max="400" step="5"></div>
+      </div>
+      <div class="voce-row">
+        <span class="voce-name"><span class="voce-dot" style="background:var(--macchina)"></span>Assicurazione</span>
+        <div class="voce-input-wrap"><span class="voce-euro">€</span><input class="voce-input" type="number" id="f3-assic" value="70" min="0" max="300" step="5"></div>
+      </div>
+      <div class="voce-row">
+        <span class="voce-name"><span class="voce-dot" style="background:var(--macchina)"></span>Manutenzione / bollo / gomme</span>
+        <div class="voce-input-wrap"><span class="voce-euro">€</span><input class="voce-input" type="number" id="f3-manu" value="50" min="0" max="300" step="5"></div>
+      </div>
+      <div class="voce-row">
+        <span class="voce-name"><span class="voce-dot" style="background:var(--macchina)"></span>Benzina auto</span>
+        <div class="voce-input-wrap"><span class="voce-euro">€</span><input class="voce-input" type="number" id="f3-benz" value="70" min="0" max="300" step="5"></div>
+      </div>
+
+      <div class="sezione-label">Spese varie</div>
+      <div class="voce-row">
+        <span class="voce-name"><span class="voce-dot" style="background:#64748b"></span>Motorino (rata)</span>
+        <div class="voce-input-wrap"><span class="voce-euro">€</span><input class="voce-input" type="number" id="f3-moto" value="177" min="0" max="400" step="5"></div>
+      </div>
+      <div class="voce-row">
+        <span class="voce-name"><span class="voce-dot" style="background:#64748b"></span>Abbonamenti</span>
+        <div class="voce-input-wrap"><span class="voce-euro">€</span><input class="voce-input" type="number" id="f3-abb" value="7" min="0" max="100" step="1"></div>
+      </div>
+      <div class="voce-row">
+        <span class="voce-name"><span class="voce-dot" style="background:#64748b"></span>Uscite amici</span>
+        <div class="voce-input-wrap"><span class="voce-euro">€</span><input class="voce-input" type="number" id="f3-uscite" value="300" min="0" max="800" step="10"></div>
+      </div>
+
+      <div class="sezione-label">Obiettivi mensili</div>
+      <div class="voce-row">
+        <span class="voce-name"><span class="voce-dot" style="background:var(--pac)"></span>PAC ETF</span>
+        <div class="voce-input-wrap"><span class="voce-euro">€</span><input class="voce-input" type="number" id="f3-pac" value="150" min="0" max="600" step="10"></div>
+      </div>
+      <div class="voce-row">
+        <span class="voce-name"><span class="voce-dot" style="background:var(--risp)"></span>Risparmio libero</span>
+        <div class="voce-input-wrap"><span class="voce-euro">€</span><input class="voce-input" type="number" id="f3-risp" value="126" min="0" max="600" step="10"></div>
+      </div>
+    </div>
+
+    <div class="margine-box">
+      <div class="mb-row"><span>Stipendio</span><strong id="f3-mb-stip">—</strong></div>
+      <div class="mb-row"><span>Totale spese + obiettivi</span><strong id="f3-mb-tot">—</strong></div>
+      <hr class="mb-divider">
+      <div class="mb-row"><span class="mb-avanzo">Avanzo non allocato</span><span class="mb-avanzo" id="f3-mb-av">—</span></div>
+    </div>
+  </div>
+
+  <!-- RECAP RISPARMIO F3 -->
+  <div class="recap-card">
+    <div class="recap-title">📊 Recap risparmio (mensile)</div>
+    <div class="recap-rows">
+      <div class="recap-row"><span>PAC ETF</span><span id="f3-rec-pac" style="color:var(--pac)">—</span></div>
+      <div class="recap-row"><span>Risparmio libero</span><span id="f3-rec-risp" style="color:var(--risp)">—</span></div>
+      <div class="recap-row"><span>% risparmio su stipendio</span><span id="f3-rec-pct">—</span></div>
+      <div class="recap-row"><span>PAC totale mensile (F2+F3)</span><span id="f3-rec-pac-tot" style="color:var(--pac)">—</span></div>
+    </div>
+    <hr class="recap-div">
+    <div class="recap-total"><span>Risparmio totale / mese</span><span id="f3-rec-tot" style="color:var(--pac)">—</span></div>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><span class="card-title">Ripartizione stipendio</span></div>
+    <div class="chart-wrap ch180"><canvas id="f3-pie"></canvas></div>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><span class="card-title">Accumulo risparmio + PAC</span><span class="card-sub">12 mesi da set 2027</span></div>
+    <div class="legend">
+      <div class="leg"><div class="leg-sq" style="background:var(--risp)"></div>Risparmio libero</div>
+      <div class="leg"><div class="leg-sq" style="background:var(--pac)"></div>PAC cumulativo</div>
+    </div>
+    <div class="chart-wrap ch200"><canvas id="f3-line"></canvas></div>
+  </div>
+
+</div>
+</div>
+
+<!-- ══════════════ CONFRONTO ══════════════ -->
+<div class="page" id="page-cf">
+<div class="wrap">
+
+  <div style="margin-bottom:20px">
+    <div style="font-size:10px;text-transform:uppercase;letter-spacing:.12em;color:var(--t3)">Vista globale</div>
+    <div style="font-size:22px;font-weight:800;letter-spacing:-.03em;margin-top:4px">Percorso completo</div>
+    <div style="font-size:12px;color:var(--t2);margin-top:5px">Aggiornato in tempo reale dalle fasi</div>
+  </div>
+
+  <div class="sec-label">Dicembre 2026 — fine fase 1</div>
+  <div class="snap-card">
+    <div class="snap-accent" style="background:var(--fondo)"></div>
+    <div class="snap-sc" style="color:var(--fondo)">Fase 1 completata</div>
+    <div class="snap-rows">
+      <div class="snap-row2"><span>🏦 Fondo emergenze</span><span id="cf-dic-fondo" style="color:var(--fondo)">—</span></div>
+      <div class="snap-row2"><span>📈 PAC</span><span>€0</span></div>
+      <div class="snap-row2"><span>💰 Risparmio libero</span><span>€0</span></div>
+    </div>
+    <hr class="snap-div">
+    <div class="snap-total"><span>Patrimonio</span><span id="cf-dic-tot" style="color:var(--fondo)">—</span></div>
+  </div>
+
+  <div class="sec-label">Luglio 2027 — acquisto macchina</div>
+  <div class="snap-card">
+    <div class="snap-accent" style="background:var(--macchina)"></div>
+    <div class="snap-sc" style="color:var(--macchina)">Fine fase 2</div>
+    <div class="snap-rows">
+      <div class="snap-row2"><span>🏦 Fondo emergenze</span><span id="cf-lug-fondo" style="color:var(--fondo)">—</span></div>
+      <div class="snap-row2"><span>🚗 Fondo macchina</span><span id="cf-lug-auto" style="color:var(--macchina)">—</span></div>
+      <div class="snap-row2"><span>🌊 Vacanza accantonata</span><span id="cf-lug-vac" style="color:var(--vacanza)">—</span></div>
+      <div class="snap-row2"><span>📈 PAC</span><span id="cf-lug-pac" style="color:var(--pac)">—</span></div>
+    </div>
+    <hr class="snap-div">
+    <div class="snap-total"><span>Patrimonio lordo</span><span id="cf-lug-tot" style="color:var(--macchina)">—</span></div>
+  </div>
+
+  <div class="sec-label">Dicembre 2027 — quadro finale</div>
+  <div class="snap-card">
+    <div class="snap-accent" style="background:var(--pac)"></div>
+    <div class="snap-sc" style="color:var(--pac)">Fine anno</div>
+    <div class="snap-rows">
+      <div class="snap-row2"><span>🏦 Fondo emergenze</span><span id="cf-fin-fondo" style="color:var(--fondo)">—</span></div>
+      <div class="snap-row2"><span>📈 PAC totale (7+4 mesi)</span><span id="cf-fin-pac" style="color:var(--pac)">—</span></div>
+      <div class="snap-row2"><span>💰 Risparmio libero (4 mesi)</span><span id="cf-fin-risp" style="color:var(--risp)">—</span></div>
+      <div class="snap-row2"><span>🏦 Acc. maxirata (4 mesi)</span><span id="cf-fin-maxi">—</span></div>
+    </div>
+    <hr class="snap-div">
+    <div class="snap-total"><span>Patrimonio liquido</span><span id="cf-fin-tot" style="color:var(--pac)">—</span></div>
+  </div>
+
+  <div class="card" style="margin-top:16px">
+    <div class="card-header"><span class="card-title">Patrimonio nel tempo</span></div>
+    <div class="legend">
+      <div class="leg"><div class="leg-sq" style="background:var(--fondo)"></div>Fondo emerg.</div>
+      <div class="leg"><div class="leg-sq" style="background:var(--macchina)"></div>Macchina</div>
+      <div class="leg"><div class="leg-sq" style="background:var(--pac)"></div>PAC</div>
+      <div class="leg"><div class="leg-sq" style="background:var(--risp)"></div>Risparmio</div>
+    </div>
+    <div class="chart-wrap ch200"><canvas id="cf-line"></canvas></div>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><span class="card-title">Patrimonio a fine 2027</span></div>
+    <div class="chart-wrap ch180"><canvas id="cf-bar"></canvas></div>
+  </div>
+
+</div>
+</div>
+
+<nav class="bottom-nav">
+  <div class="bnav-item active" onclick="showPage('f1')" id="bn-f1"><div class="bnav-icon">🏦</div><span>Fase 1</span></div>
+  <div class="bnav-item" onclick="showPage('f2')" id="bn-f2"><div class="bnav-icon">🚗</div><span>Fase 2</span></div>
+  <div class="bnav-item" onclick="showPage('f3')" id="bn-f3"><div class="bnav-icon">📈</div><span>Fase 3</span></div>
+  <div class="bnav-item" onclick="showPage('cf')" id="bn-cf"><div class="bnav-icon">⇌</div><span>Confronto</span></div>
+</nav>
+
+<script>
+const fmt = n => '€' + Math.round(n).toLocaleString('it-IT');
+const pct = (a,b) => b>0 ? Math.round(a/b*100)+'%' : '—';
+const dark = 'rgba(255,255,255,0.05)';
+const tc = '#44445a';
+const F1M = ['Set 26','Ott 26','Nov 26','Dic 26'];
+const F2M = ['Gen 27','Feb 27','Mar 27','Apr 27','Mag 27','Giu 27','Lug 27'];
+const F3M = ['Set 27','Ott 27','Nov 27','Dic 27','Gen 28','Feb 28','Mar 28','Apr 28','Mag 28','Giu 28','Lug 28','Ago 28'];
+const ALL = ['Set 26','Ott 26','Nov 26','Dic 26','Gen 27','Feb 27','Mar 27','Apr 27','Mag 27','Giu 27','Lug 27','Ago 27','Set 27','Ott 27','Nov 27','Dic 27'];
+
+function lineOpts(callbacks){
+  return {
+    responsive:true,maintainAspectRatio:false,animation:{duration:280},
+    plugins:{legend:{display:false},tooltip:{mode:'index',intersect:false,backgroundColor:'#18181f',borderColor:'rgba(255,255,255,0.1)',borderWidth:1,titleColor:'#f0f0f5',bodyColor:'#8888a0',padding:10,cornerRadius:8,callbacks:callbacks||{label:ctx=>` ${ctx.dataset.label}: ${fmt(ctx.parsed.y)}`}}},
+    scales:{
+      x:{ticks:{color:tc,font:{size:10},maxRotation:0,autoSkip:false},grid:{display:false},border:{display:false}},
+      y:{ticks:{color:tc,font:{size:10},callback:v=>'€'+Math.round(v).toLocaleString('it-IT')},grid:{color:dark},border:{display:false}}
+    }
+  };
+}
+function pieOpts(){
+  return {responsive:true,maintainAspectRatio:false,cutout:'55%',animation:{duration:280},plugins:{legend:{display:true,position:'bottom',labels:{color:'#8888a0',font:{size:10},padding:8,boxWidth:9}},tooltip:{backgroundColor:'#18181f',borderColor:'rgba(255,255,255,0.1)',borderWidth:1,titleColor:'#f0f0f5',bodyColor:'#8888a0',padding:10,cornerRadius:8,callbacks:{label:ctx=>` ${ctx.label}: ${fmt(ctx.parsed)}`}}}};
+}
+
+function g(id){ return +document.getElementById(id).value||0; }
+function el(id){ return document.getElementById(id); }
+function set(id,v,color){ const e=el(id); if(e){e.textContent=v;if(color)e.style.color=color;} }
+function cls(id,c){ const e=el(id); if(e) e.className='mb-avanzo '+c; }
+
+// ── CHARTS INIT ──
+let charts = {};
+function mkLine(id,labels,datasets){ return new Chart(el(id).getContext('2d'),{type:'line',data:{labels,datasets},options:lineOpts()}); }
+function mkPie(id,labels,data,colors){ return new Chart(el(id).getContext('2d'),{type:'doughnut',data:{labels,datasets:[{data,backgroundColor:colors,borderWidth:0,hoverOffset:4}]},options:pieOpts()}); }
+
+function initCharts(){
+  // F1
+  charts.f1Line = mkLine('f1-line',F1M,[{label:'Fondo emergenze',data:[],borderColor:'#f59e0b',backgroundColor:'rgba(245,158,11,0.12)',fill:true,tension:0.35,pointRadius:5,pointBackgroundColor:'#f59e0b',pointBorderColor:'#0a0a0f',pointBorderWidth:2,borderWidth:2}]);
+  charts.f1Pie  = mkPie('f1-pie',['Fondo emerg.','Spese vita'],[0,0],['#f59e0b','#1e293b']);
+
+  // F2
+  charts.f2Line = mkLine('f2-line',F2M,[
+    {label:'Macchina',data:[],borderColor:'#3b82f6',backgroundColor:'rgba(59,130,246,0.1)',fill:true,tension:0.35,pointRadius:4,pointBackgroundColor:'#3b82f6',pointBorderColor:'#0a0a0f',pointBorderWidth:2,borderWidth:2},
+    {label:'Vacanza',data:[],borderColor:'#f43f5e',backgroundColor:'rgba(244,63,94,0.07)',fill:true,tension:0.35,pointRadius:4,pointBackgroundColor:'#f43f5e',pointBorderColor:'#0a0a0f',pointBorderWidth:2,borderWidth:2},
+    {label:'PAC',data:[],borderColor:'#10b981',backgroundColor:'rgba(16,185,129,0.07)',fill:true,tension:0.35,pointRadius:4,pointBackgroundColor:'#10b981',pointBorderColor:'#0a0a0f',pointBorderWidth:2,borderWidth:2},
+  ]);
+  charts.f2Pie = mkPie('f2-pie',['Macchina','Vacanza','PAC','Avanzo'],[0,0,0,0],['#3b82f6','#f43f5e','#10b981','#334155']);
+
+  // F3
+  charts.f3Pie = mkPie('f3-pie',['Rata+Acc.','Assic.+Manu.','Benzina','Motorino','Abbonamenti','Uscite','PAC','Risparmio'],[0,0,0,0,0,0,0,0],['#3b82f6','#64748b','#475569','#334155','#1e293b','#f59e0b','#10b981','#a78bfa']);
+  charts.f3Line = mkLine('f3-line',F3M,[
+    {label:'Risparmio libero',data:[],borderColor:'#a78bfa',backgroundColor:'rgba(167,139,250,0.1)',fill:true,tension:0.35,pointRadius:4,pointBackgroundColor:'#a78bfa',pointBorderColor:'#0a0a0f',pointBorderWidth:2,borderWidth:2},
+    {label:'PAC cumulativo',data:[],borderColor:'#10b981',backgroundColor:'rgba(16,185,129,0.08)',fill:true,tension:0.35,pointRadius:4,pointBackgroundColor:'#10b981',pointBorderColor:'#0a0a0f',pointBorderWidth:2,borderWidth:2},
+  ]);
+
+  // CF
+  charts.cfLine = mkLine('cf-line',ALL,[
+    {label:'Fondo emerg.',data:[],borderColor:'#f59e0b',backgroundColor:'transparent',tension:0.3,pointRadius:2,pointBackgroundColor:'#f59e0b',borderWidth:2},
+    {label:'Macchina',data:[],borderColor:'#3b82f6',backgroundColor:'transparent',tension:0.3,pointRadius:2,pointBackgroundColor:'#3b82f6',borderWidth:2},
+    {label:'PAC',data:[],borderColor:'#10b981',backgroundColor:'transparent',tension:0.3,pointRadius:2,pointBackgroundColor:'#10b981',borderWidth:2},
+    {label:'Risparmio',data:[],borderColor:'#a78bfa',backgroundColor:'transparent',tension:0.3,pointRadius:2,pointBackgroundColor:'#a78bfa',borderWidth:2},
+  ]);
+  charts.cfBar = new Chart(el('cf-bar').getContext('2d'),{
+    type:'bar',data:{labels:['Fondo\nemerg.','PAC\nETF','Risparmio\nlibero','Acc.\nmaxirata'],datasets:[{data:[0,0,0,0],backgroundColor:['#f59e0b','#10b981','#a78bfa','#3b82f6'],borderRadius:8,borderSkipped:false}]},
+    options:{responsive:true,maintainAspectRatio:false,animation:{duration:280},plugins:{legend:{display:false},tooltip:{backgroundColor:'#18181f',borderColor:'rgba(255,255,255,0.1)',borderWidth:1,titleColor:'#f0f0f5',bodyColor:'#8888a0',padding:10,cornerRadius:8,callbacks:{label:ctx=>` ${fmt(ctx.parsed.y)}`}}},scales:{x:{ticks:{color:tc,font:{size:10}},grid:{display:false},border:{display:false}},y:{ticks:{color:tc,font:{size:10},callback:v=>'€'+v.toLocaleString('it-IT')},grid:{color:dark},border:{display:false}}}}
+  });
+}
+
+// ── FASE 1 ──
+function updateF1(){
+  const stip=g('f1-stip'), moto=g('f1-moto'), usc=g('f1-uscite'), pra=g('f1-pranzi'), abb=g('f1-abb'), pal=g('f1-pal'), gen=g('f1-gen');
+  const base=moto+usc+pra+abb;
+  const marg=[Math.max(0,stip-base-pal-gen),Math.max(0,stip-base-gen),Math.max(0,stip-base-gen),Math.max(0,stip-base)];
+  let cum=0; const cumArr=[];
+  marg.forEach(m=>{cum+=m;cumArr.push(cum);});
+
+  set('f1-kpi-fondo',fmt(cum),'var(--fondo)');
+  set('f1-kpi-stip',fmt(stip));
+  const sub=el('f1-kpi-sub'); sub.textContent=cum>=3000?'Target €3.000 ✓':`Mancano ${fmt(3000-cum)}`; sub.style.color=cum>=3000?'var(--pac)':'var(--vacanza)';
+  set('f1-mb-base',fmt(base));
+
+  const margBox=el('f1-mb-margini'); margBox.innerHTML='';
+  marg.forEach((m,i)=>{
+    const d=document.createElement('div');
+    d.style.cssText='display:flex;justify-content:space-between;font-size:12px;color:var(--t2);padding:2px 0';
+    d.innerHTML=`<span>${F1M[i]}</span><strong style="color:var(--t1)">${fmt(m)}</strong>`;
+    margBox.appendChild(d);
+  });
+  const totEl=el('f1-mb-tot'); totEl.textContent=fmt(cum); totEl.className='mb-avanzo '+(cum>=3000?'ok':'warn');
+
+  // Recap
+  const media=cum/4;
+  set('f1-rec-versato',fmt(cum),'var(--fondo)');
+  set('f1-rec-media',fmt(media));
+  set('f1-rec-pct',pct(media,stip));
+  set('f1-rec-tot',fmt(cum),'var(--fondo)');
+
+  // Charts
+  charts.f1Line.data.datasets[0].data=cumArr; charts.f1Line.update();
+  charts.f1Pie.data.datasets[0].data=[Math.round(cum/4),Math.round(base)]; charts.f1Pie.update();
+
+  // Table
+  const tb=el('f1-tbody'); tb.innerHTML='';
+  let cf=0;
+  marg.forEach((m,i)=>{cf+=m;const tr=document.createElement('tr');if(i===3)tr.classList.add('ms');tr.innerHTML=`<td>${F1M[i]}</td><td>${fmt(m)}</td><td class="hl" style="color:var(--fondo)">+${fmt(m)}</td><td class="hl">${fmt(cf)}</td>`;tb.appendChild(tr);});
+
+  updateConfronto();
+}
+
+// ── FASE 2 ──
+function updateF2(){
+  const stip=g('f2-stip'), moto=g('f2-moto'), usc=g('f2-uscite'), pra=g('f2-pranzi'), abb=g('f2-abb');
+  const auto=g('f2-auto'), vac=g('f2-vac'), pac=g('f2-pac');
+  const spese=moto+usc+pra+abb;
+  const marg=Math.max(0,stip-spese);
+  const alloc=auto+vac+pac;
+  const av=marg-alloc;
+
+  set('f2-kpi-auto',fmt(auto*7),'var(--macchina)');
+  set('f2-kpi-pac',fmt(pac*7),'var(--pac)');
+  set('f2-kpi-vac',fmt(vac*7),'var(--vacanza)');
+  const avEl=el('f2-kpi-av'); avEl.textContent=fmt(Math.max(0,av)); avEl.style.color=av>=0?'var(--pac)':'var(--vacanza)';
+  set('f2-kpi-av-s',`su ${fmt(marg)} margine`);
+  set('f2-mb-stip',fmt(stip)); set('f2-mb-spese',`−${fmt(spese)}`); set('f2-mb-marg',fmt(marg)); set('f2-mb-alloc',fmt(alloc));
+  const avBox=el('f2-mb-av'); avBox.textContent=av>=0?fmt(av)+' liberi':fmt(Math.abs(av))+' sforamento'; avBox.className='mb-avanzo '+(av>=0?(av>0?'ok':'ok'):'bad');
+
+  // Recap
+  const totAcc=auto*7+vac*7+pac*7+Math.max(0,av)*7;
+  set('f2-rec-auto',fmt(auto*7),'var(--macchina)');
+  set('f2-rec-pac',fmt(pac*7),'var(--pac)');
+  set('f2-rec-vac',fmt(vac*7),'var(--vacanza)');
+  set('f2-rec-av',fmt(Math.max(0,av)*7));
+  set('f2-rec-pct',pct(alloc,stip));
+  set('f2-rec-tot',fmt(auto*7+pac*7+vac*7),'var(--macchina)');
+
+  // Charts
+  let cA=0,cV=0,cP=0; const aD=[],vD=[],pD=[];
+  F2M.forEach(()=>{cA+=auto;cV+=vac;cP+=pac;aD.push(cA);vD.push(cV);pD.push(cP);});
+  charts.f2Line.data.datasets[0].data=aD; charts.f2Line.data.datasets[1].data=vD; charts.f2Line.data.datasets[2].data=pD; charts.f2Line.update();
+  charts.f2Pie.data.datasets[0].data=[auto,vac,pac,Math.max(0,av)]; charts.f2Pie.update();
+
+  // Table
+  const tb=el('f2-tbody'); tb.innerHTML=''; let ca=0,cp=0;
+  F2M.forEach((m,i)=>{ca+=auto;cp+=pac;const tr=document.createElement('tr');if(i===6)tr.classList.add('ms');tr.innerHTML=`<td>${m}</td><td style="color:var(--macchina)">+${fmt(auto)}</td><td style="color:var(--vacanza)">+${fmt(vac)}</td><td style="color:var(--pac)">+${fmt(pac)}</td><td class="hl">${fmt(ca)}</td><td class="hl">${fmt(cp)}</td>`;tb.appendChild(tr);});
+
+  updateConfronto();
+}
+
+// ── FASE 3 ──
+function updateF3(){
+  const stip=g('f3-stip'), rata=g('f3-rata'), maxi=g('f3-maxi'), assic=g('f3-assic'), manu=g('f3-manu'), benz=g('f3-benz'), moto=g('f3-moto'), abb=g('f3-abb'), usc=g('f3-uscite'), pac=g('f3-pac'), risp=g('f3-risp');
+  const totSpese=rata+maxi+assic+manu+benz+moto+abb+usc+pac+risp;
+  const residuo=stip-totSpese;
+
+  set('f3-kpi-spese',fmt(totSpese),'var(--vacanza)');
+  const rEl=el('f3-kpi-res'); rEl.textContent=fmt(Math.max(0,residuo)); rEl.style.color=residuo>=0?'var(--pac)':'var(--vacanza)';
+  set('f3-mb-stip',fmt(stip)); set('f3-mb-tot',`−${fmt(totSpese)}`);
+  const avEl=el('f3-mb-av'); avEl.textContent=residuo>=0?fmt(residuo)+' liberi':fmt(Math.abs(residuo))+' sforamento'; avEl.className='mb-avanzo '+(residuo>=0?'ok':'bad');
+
+  // Recap
+  const pacF2=g('f2-pac');
+  set('f3-rec-pac',fmt(pac),'var(--pac)');
+  set('f3-rec-risp',fmt(risp),'var(--risp)');
+  set('f3-rec-pct',pct(pac+risp,stip));
+  set('f3-rec-pac-tot',fmt(pacF2+pac),'var(--pac)');
+  const totRisp=pac+risp; const totEl=el('f3-rec-tot'); totEl.textContent=fmt(totRisp); totEl.style.color=totRisp>0?'var(--pac)':'var(--vacanza)';
+
+  // Pie
+  charts.f3Pie.data.datasets[0].data=[rata+maxi,assic+manu,benz,moto,abb,usc,pac,risp]; charts.f3Pie.update();
+
+  // Line
+  const pacF2tot=pacF2*7;
+  let cR=0,cP=pacF2tot; const rArr=[],pArr=[];
+  F3M.forEach(()=>{cR+=risp;cP+=(pac+g('f3-risp')>0?pac:0);rArr.push(cR);pArr.push(cP);});
+  // Ricalcola PAC correttamente
+  let cP2=pacF2tot; const pArr2=[];
+  F3M.forEach(()=>{cP2+=pac;pArr2.push(cP2);});
+  charts.f3Line.data.datasets[0].data=rArr; charts.f3Line.data.datasets[1].data=pArr2; charts.f3Line.update();
+
+  updateConfronto();
+}
+
+// ── CONFRONTO ──
+function updateConfronto(){
+  const stip1=g('f1-stip'), moto1=g('f1-moto'), usc1=g('f1-uscite'), pra1=g('f1-pranzi'), abb1=g('f1-abb'), pal1=g('f1-pal'), gen1=g('f1-gen');
+  const base1=moto1+usc1+pra1+abb1;
+  const marg1=[Math.max(0,stip1-base1-pal1-gen1),Math.max(0,stip1-base1-gen1),Math.max(0,stip1-base1-gen1),Math.max(0,stip1-base1)];
+  const fondoDic=marg1.reduce((a,b)=>a+b,0);
+
+  const auto2=g('f2-auto'), vac2=g('f2-vac'), pac2=g('f2-pac');
+  const autoDic=auto2*7, vacDic=vac2*7, pacF2=pac2*7;
+
+  const pac3=g('f3-pac'), risp3=g('f3-risp'), maxi3=g('f3-maxi');
+  const pacFin=pacF2+pac3*4;
+  const rispFin=risp3*4;
+  const maxiFin=maxi3*4;
+
+  set('cf-dic-fondo',fmt(fondoDic),'var(--fondo)'); set('cf-dic-tot',fmt(fondoDic),'var(--fondo)');
+  set('cf-lug-fondo',fmt(fondoDic),'var(--fondo)'); set('cf-lug-auto',fmt(autoDic),'var(--macchina)'); set('cf-lug-vac',fmt(vacDic),'var(--vacanza)'); set('cf-lug-pac',fmt(pacF2),'var(--pac)');
+  set('cf-lug-tot',fmt(fondoDic+autoDic+vacDic+pacF2),'var(--macchina)');
+  set('cf-fin-fondo',fmt(fondoDic),'var(--fondo)'); set('cf-fin-pac',fmt(pacFin),'var(--pac)'); set('cf-fin-risp',fmt(rispFin),'var(--risp)'); set('cf-fin-maxi',fmt(maxiFin));
+  set('cf-fin-tot',fmt(fondoDic+pacFin+rispFin+maxiFin),'var(--pac)');
+
+  // CF Line
+  let cf=0; const fL=[]; marg1.forEach(m=>{cf+=m;fL.push(cf);}); for(let i=4;i<16;i++) fL.push(cf);
+  let ca=0; const aL=new Array(4).fill(0); for(let i=0;i<7;i++){ca+=auto2;aL.push(ca);} for(let i=11;i<16;i++) aL.push(0);
+  let cp=0; const pL=new Array(4).fill(0); for(let i=4;i<11;i++){cp+=pac2;pL.push(cp);} for(let i=11;i<16;i++){cp+=pac3;pL.push(cp);}
+  let cr=0; const rL=new Array(12).fill(0); for(let i=12;i<16;i++){cr+=risp3;rL.push(cr);}
+  charts.cfLine.data.datasets[0].data=fL; charts.cfLine.data.datasets[1].data=aL; charts.cfLine.data.datasets[2].data=pL; charts.cfLine.data.datasets[3].data=rL; charts.cfLine.update();
+  charts.cfBar.data.datasets[0].data=[fondoDic,pacFin,rispFin,maxiFin]; charts.cfBar.update();
+}
+
+// ── NAV ──
+function showPage(id){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.bnav-item').forEach(b=>b.classList.remove('active'));
+  el('page-'+id).classList.add('active');
+  const map={f1:0,f2:1,f3:2,cf:3};
+  document.querySelectorAll('.tab')[map[id]].classList.add('active');
+  el('bn-'+id).classList.add('active');
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+
+// ── INIT ──
+initCharts();
+['f1-stip','f1-moto','f1-uscite','f1-pranzi','f1-abb','f1-pal','f1-gen'].forEach(id=>el(id).addEventListener('input',updateF1));
+['f2-stip','f2-moto','f2-uscite','f2-pranzi','f2-abb','f2-auto','f2-vac','f2-pac'].forEach(id=>el(id).addEventListener('input',updateF2));
+['f3-stip','f3-rata','f3-maxi','f3-assic','f3-manu','f3-benz','f3-moto','f3-abb','f3-uscite','f3-pac','f3-risp'].forEach(id=>el(id).addEventListener('input',updateF3));
+updateF1(); updateF2(); updateF3();
+</script>
+</body>
+</html>
